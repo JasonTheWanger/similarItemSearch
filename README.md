@@ -13,7 +13,7 @@ Given a dataset of product listings (images and titles), this pipeline:
 - Produces a submission file in the required Kaggle format.
 
 ## Directory Structure
-
+```
 similarItemSearch/
 ├── shopee-product-matching/
 │ ├── train.csv # Full training data with product listings
@@ -29,7 +29,7 @@ similarItemSearch/
 ├── FaissSearch.py # Script for building the FAISS index and generating submission
 ├── preprocess.py # (Optional) Script for sampling 3,000 items and copying images
 └── README.md # This file
-
+```
 markdown
 Copy
 Edit
