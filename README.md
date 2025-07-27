@@ -68,6 +68,7 @@ Edit
   - Tokenize and extract a title embedding from the product title (with truncation to handle token limits).
   - Combine the image and title embeddings (default is a simple average) and normalize the result.
   - Save the image embeddings, title embeddings, and combined (final) embeddings to `.npy` files.
+  - The final embedding is averaged from the image and the corresponding text title.
   - Save the corresponding posting IDs to `image_ids.txt`.
 
 ### Step 3: FAISS Similarity Search and Submission Generation
@@ -76,7 +77,7 @@ Edit
   - Load the final combined embeddings and posting IDs.
   - Build a FAISS index using cosine similarity.
   - Query the index for the top 50 most similar items for each product.
-  - Optionally filter results using a similarity threshold.
+  - Optionally filter results using a similarity threshold >= 0.7.
   - Generate a submission CSV file (`submission.csv`) in the required format:
     - Each row contains a `posting_id` and a space-separated list of predicted matching posting IDs.
 
@@ -118,3 +119,44 @@ Local Evaluation: Implement F1 scoring using ground truth labels from train_samp
 Scaling Up: Once the pipeline is stable on 3k samples, consider running on the full dataset using GPU support on Kaggle or Colab.
 
 Hyperparameter Tuning: Adjust weights between image and text embeddings and similarity thresholds based on local evaluation.
+
+## Solution Comparison
+
+This section compares different approaches for solving the Shopee Product Matching task, particularly for multi-modal (image + text) similarity. Each method is evaluated in terms of usage complexity, fine-tuning needs, performance, and speed.
+
+### Methods Compared
+
+| Approach | Description |
+|----------|-------------|
+| **CLIP + FAISS (Ours)** | Extract CLIP image and text embeddings → combine → perform nearest-neighbor retrieval using FAISS |
+| **CLIP Only (Image)** | Use only CLIP's vision encoder for image-to-image similarity |
+| **Sentence-BERT + CNN (Custom)** | Encode text with SBERT and image with CNN (e.g., ResNet); combine and train a similarity model |
+| **Fine-tuned Siamese Network** | Train a model to distinguish matched vs. unmatched pairs using contrastive or triplet loss |
+| **CLIP Fine-tuning** | Fine-tune CLIP on domain-specific image-text pairs (e.g., Shopee product matches) |
+
+---
+
+### Comparison Table
+
+| Method                     | Multi-Modal | Pretrained | Fine-Tuning | Accuracy (✅) | Speed (⚡️) | Notes |
+|---------------------------|-------------|------------|-------------|---------------|-------------|-------|
+| **CLIP + FAISS (Ours)**   | ✅ Yes       | ✅ Yes     | ❌ No        | 🟢 High        | 🟢 Fast      | Best zero-shot performance with easy setup |
+| CLIP (Image only)         | ❌ No        | ✅ Yes     | ❌ No        | 🟡 Medium      | 🟢 Fast      | May miss text details like size or brand |
+| SBERT + CNN (Custom)      | ✅ Yes       | ✅ Yes     | ⚠️ Optional  | 🟡 Medium      | ⚠️ Moderate  | Manual fusion of modalities required |
+| Fine-tuned Siamese Net    | ✅ Yes       | ⚠️ Limited | ✅ Yes       | 🔵 Very High   | 🔴 Slow      | Needs labeled pairs and more compute |
+| CLIP Fine-tuning          | ✅ Yes       | ✅ Yes     | ✅ Yes       | 🔵 Very High   | 🔴 Very Slow | High performance, high cost |
+
+---
+
+### Why Chose CLIP + FAISS
+
+| Strength                | Explanation |
+|-------------------------|-------------|
+| **Zero-shot accuracy**  | CLIP generalizes well without retraining |
+| **Cross-modal alignment** | Embeds image and title into the same space |
+| **Efficient indexing**  | FAISS is fast and scalable to large datasets |
+| **CPU/M1-friendly**     | Works smoothly on local machines for development |
+
+---
+
+
