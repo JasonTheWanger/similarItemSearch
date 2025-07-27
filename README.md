@@ -159,4 +159,12 @@ This section compares different approaches for solving the Shopee Product Matchi
 
 ---
 
+## 🧠 Why Pretrained CLIP Is Sufficient
+
+| Reason | Explanation |
+|--------|-------------|
+| **CLIP is trained on 400M image–text pairs** | It already understands a wide range of visual and textual patterns |
+| **Works well out-of-the-box** | Just extract embeddings and use cosine similarity or FAISS |
+| **Multi-modal alignment** | The text and image embeddings live in the same space |
+| **No GPU fine-tuning required** | Great for local development on CPU or Apple Silicon |
 
