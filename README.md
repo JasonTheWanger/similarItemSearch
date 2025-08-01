@@ -138,13 +138,13 @@ This section compares different approaches for solving the Shopee Product Matchi
 
 ### Comparison Table
 
-| Method                     | Multi-Modal | Pretrained | Fine-Tuning | Accuracy (✅) | Speed (⚡️) | Notes |
-|---------------------------|-------------|------------|-------------|---------------|-------------|-------|
-| **CLIP + FAISS (Ours)**   | ✅ Yes       | ✅ Yes     | ❌ No        | 🟢 High        | 🟢 Fast      | Best zero-shot performance with easy setup |
-| CLIP (Image only)         | ❌ No        | ✅ Yes     | ❌ No        | 🟡 Medium      | 🟢 Fast      | May miss text details like size or brand |
-| SBERT + CNN (Custom)      | ✅ Yes       | ✅ Yes     | ⚠️ Optional  | 🟡 Medium      | ⚠️ Moderate  | Manual fusion of modalities required |
-| Fine-tuned Siamese Net    | ✅ Yes       | ⚠️ Limited | ✅ Yes       | 🔵 Very High   | 🔴 Slow      | Needs labeled pairs and more compute |
-| CLIP Fine-tuning          | ✅ Yes       | ✅ Yes     | ✅ Yes       | 🔵 Very High   | 🔴 Very Slow | High performance, high cost |
+| Method                    | Multi-Modal | Pretrained | Fine-Tuning | Accuracy      | Speed       | Notes |
+|---------------------------|-------------|------------|-------------|---------------|-------------|--------|
+| **CLIP + FAISS (Ours)**   | Yes         | Yes        | No          | High          | Fast        | Best zero-shot performance with easy setup |
+| CLIP (Image only)         | No          | Yes        | No          | Medium        | Fast        | May miss text details like size or brand |
+| SBERT + CNN (Custom)      | Yes         | Yes        | Optional    | Medium        |  Moderate   | Manual fusion of modalities required |
+| Fine-tuned Siamese Net    | Yes         | Limited    | Yes         | Very High     | Slow        | Needs labeled pairs and more compute |
+| CLIP Fine-tuning          | Yes         | Yes        | Yes         | Very High     | Very Slow   | High performance, high cost |
 
 ---
 
@@ -159,12 +159,84 @@ This section compares different approaches for solving the Shopee Product Matchi
 
 ---
 
-## 🧠 Why Pretrained CLIP Is Sufficient
+## Evaluation & Validation
 
-| Reason | Explanation |
-|--------|-------------|
-| **CLIP is trained on 400M image–text pairs** | It already understands a wide range of visual and textual patterns |
-| **Works well out-of-the-box** | Just extract embeddings and use cosine similarity or FAISS |
-| **Multi-modal alignment** | The text and image embeddings live in the same space |
-| **No GPU fine-tuning required** | Great for local development on CPU or Apple Silicon |
+### F1 Score Summary
+
+We evaluated multiple versions of our model using different embedding combinations and thresholding methods:
+
+#### Static Threshold (Threshold = 0.9)
+| Version | Embedding Weights (Image / Title) | F1 Score |
+|---------|-----------------------------------|----------|
+| v1      | 0.5 / 0.5                         | ≈ 0.630  |
+| v2      | 0.3 / 0.7                         | ≈ 0.615  |
+| v3      | 0.7 / 0.3                         | ≈ 0.630  |
+
+#### Dynamic Threshold (`threshold = mean(sim) + std(sim) * multiplier`)
+| Version | Embedding Weights (Image / Title) | Scaling Multiplier | F1 Score |
+|---------|-----------------------------------|---------------------|----------|
+| v1      | 0.5 / 0.5                         | 1.44                | ≈ 0.690  |
+| v2      | 0.3 / 0.7                         | 1.50                | ≈ 0.646  |
+| v3      | 0.7 / 0.3                         | 1.45                | ≈ 0.675  |
+
+> **Conclusion:** Dynamic thresholding yields better performance than static cutoff. The best F1 score (~0.69) is achieved using balanced embedding weights (0.5/0.5) and a dynamic threshold with a multiplier of 1.44.
+
+---
+
+## Dynamic Thresholding for Similarity Filtering
+
+### Why Use a Dynamic Threshold?
+
+In similarity-based retrieval (e.g., using FAISS + CLIP), using a **fixed threshold** (e.g., 0.9) for similarity score filtering can be suboptimal because:
+
+- Some embeddings are intrinsically **closer** or **further apart** depending on how descriptive the image/title is.
+- A global threshold doesn’t adapt to **local similarity variance**.
+- It may include too many false positives for some queries and too few for others.
+
+To address this, we implemented a **dynamic thresholding** mechanism that computes a tailored threshold **per query item** based on the distribution of its similarity scores.
+
+---
+
+### Logic Behind Dynamic Threshold
+
+The logic is:
+```python
+threshold = similarities.mean() + similarities.std() * scaling_multiplier
+```
+
+---
+
+### Recall@50 Note
+
+While Recall@50 is commonly used in retrieval tasks, this particular Shopee dataset doesn't contain any `label_group` with more than 50 matched items. Thus, truncating predictions to 50 has **no measurable effect** on recall or F1 in this case. However, Recall@50 **would be essential** when scaling to larger datasets.
+
+---
+
+### Validation Method
+
+To validate the similarity search model against ground truth:
+
+1. **Ground Truth Dictionary Construction**:
+   - The dataset contains a `label_group` column identifying all items that belong to the same group.
+   - We created a dictionary that maps each `posting_id` to the set of all `posting_id`s in the same `label_group`.
+
+2. **Prediction Dictionary**:
+   - For each query item, we used FAISS to retrieve similar items (based on cosine similarity).
+   - A similarity threshold was applied to retain only confident matches.
+
+3. **F1 Score Calculation**:
+   ```python
+   def f1_score_row(pred_set, true_set):
+       intersection = len(pred_set & true_set)
+       if intersection == 0:
+           return 0.0
+       precision = intersection / len(pred_set)
+       recall = intersection / len(true_set)
+       return 2 * (precision * recall) / (precision + recall)
+    ```
+4. **Mean F1 Calculation**:
+   ```python
+   mean_f1 = sum(f1_scores) / len(f1_scores)
+   ```
+   
 
