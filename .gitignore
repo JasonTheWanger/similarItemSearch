@@ -1,0 +1,6 @@
+*.npy
+*.pt
+*.pkl
+*.ckpt
+*.h5
+*.onnx
