@@ -130,6 +130,7 @@ This section compares different approaches for solving the Shopee Product Matchi
 |----------|-------------|
 | **CLIP + FAISS (Ours)** | Extract CLIP image and text embeddings → combine → perform nearest-neighbor retrieval using FAISS |
 | **CLIP Only (Image)** | Use only CLIP's vision encoder for image-to-image similarity |
+| **BERT + CNN + FAISS**  | Encode text with BERT and image with a CNN; combine embeddings and search using FAISS |
 | **Sentence-BERT + CNN (Custom)** | Encode text with SBERT and image with CNN (e.g., ResNet); combine and train a similarity model |
 | **Fine-tuned Siamese Network** | Train a model to distinguish matched vs. unmatched pairs using contrastive or triplet loss |
 | **CLIP Fine-tuning** | Fine-tune CLIP on domain-specific image-text pairs (e.g., Shopee product matches) |
@@ -142,6 +143,7 @@ This section compares different approaches for solving the Shopee Product Matchi
 |---------------------------|-------------|------------|-------------|---------------|-------------|--------|
 | **CLIP + FAISS (Ours)**   | Yes         | Yes        | No          | High          | Fast        | Best zero-shot performance with easy setup |
 | CLIP (Image only)         | No          | Yes        | No          | Medium        | Fast        | May miss text details like size or brand |
+| **BERT + CNN + FAISS**    | Yes         | Yes        | No          | Medium-High   | Moderate    | Strong performance with more customizable components |
 | SBERT + CNN (Custom)      | Yes         | Yes        | Optional    | Medium        |  Moderate   | Manual fusion of modalities required |
 | Fine-tuned Siamese Net    | Yes         | Limited    | Yes         | Very High     | Slow        | Needs labeled pairs and more compute |
 | CLIP Fine-tuning          | Yes         | Yes        | Yes         | Very High     | Very Slow   | High performance, high cost |
@@ -156,6 +158,17 @@ This section compares different approaches for solving the Shopee Product Matchi
 | **Cross-modal alignment** | Embeds image and title into the same space |
 | **Efficient indexing**  | FAISS is fast and scalable to large datasets |
 | **CPU/M1-friendly**     | Works smoothly on local machines for development |
+
+---
+
+### Why Use BERT + CNN
+
+| Strength                   | Explanation |
+|----------------------------|-------------|
+| **Modular Design**         | BERT and CNN can be independently tuned or swapped for experimentation |
+| **Strong Text Semantics**  | BERT captures rich sentence-level meaning, helpful for descriptive product titles |
+| **Flexible Vision Backend**| CNNs like ResNet offer control over image representation and can be fine-tuned |
+| **Complementary to CLIP**  | Useful when CLIP struggles with fine-grained domain-specific differences |
 
 ---
 
@@ -180,6 +193,14 @@ We evaluated multiple versions of our model using different embedding combinatio
 | v3      | 0.7 / 0.3                         | 1.45                | ≈ 0.675  |
 
 > **Conclusion:** Dynamic thresholding yields better performance than static cutoff. The best F1 score (~0.69) is achieved using balanced embedding weights (0.5/0.5) and a dynamic threshold with a multiplier of 1.44.
+
+#### **BERT + CNN + FAISS (Dynamic Threshold Only, `threshold = mean + std * 1.4`)**
+
+| Version     | Embedding Weights (Image / Title) | F1 Score |
+|-------------|-----------------------------------|----------|
+| BERT-CNN v1 | 0.5 / 0.5                         | ≈ 0.654  |
+| BERT-CNN v2 | 0.3 / 0.7                         | ≈ 0.584  |
+| BERT-CNN v3 | 0.7 / 0.3                         | ≈ 0.656  |
 
 ---
 
