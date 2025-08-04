@@ -1,3 +1,4 @@
+CLIP + Faiss
 Sataic Threshold:
 v1 --> threshold 0.9, 0.5 * image_embed && 0.5 * title_embed: f1 ≈ 0.63
 v2 --> threshold 0.9, 0.3 * image_embed && 0.7 * title_embed: f1 ≈ 0.615
@@ -8,5 +9,8 @@ v1 --> threshold scaling multiplier 1.44, 0.5 * image_embed && 0.5 * title_embed
 v2 --> threshold scaling multiplier 1.5, 0.3 * image_embed && 0.7 * title_embed: f1 ≈ 0.646
 v3 --> threshold scaling multiplier 1.45, 0.7 * image_embed && 0.3 * title_embed: f1 ≈ 0.675
 
-
+BERT + CNN + Faiss
+v1 --> threshold scaling multiplier 1.4, 0.5 * image_embed && 0.5 * title_embed: f1 ≈ 0.654
+v2 --> threshold scaling multiplier 1.4, 0.3 * image_embed && 0.7 * title_embed: f1 ≈ 0.584
+v3 --> threshold scaling multiplier 1.4, 0.7 * image_embed && 0.3 * title_embed: f1 ≈ 0.656
 
