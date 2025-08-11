@@ -1,0 +1,1 @@
+python train_clip.py --epochs 8 --fuse --sbert_model all-MiniLM-L6-v2 --wimg_grid 0.6,0.7,0.8,0.85,0.9
