@@ -141,12 +141,12 @@ This section compares different approaches for solving the Shopee Product Matchi
 
 | Method                    | Multi-Modal | Pretrained | Fine-Tuning | Accuracy      | Speed       | Notes |
 |---------------------------|-------------|------------|-------------|---------------|-------------|--------|
-| **CLIP + FAISS (Ours)**   | Yes         | Yes        | No          | High          | Fast        | Best zero-shot performance with easy setup |
+| **CLIP + FAISS**          | Yes         | Yes        | No          | High          | Fast        | Best zero-shot performance with easy setup |
 | CLIP (Image only)         | No          | Yes        | No          | Medium        | Fast        | May miss text details like size or brand |
 | **BERT + CNN + FAISS**    | Yes         | Yes        | No          | Medium-High   | Moderate    | Strong performance with more customizable components |
-| SBERT + CNN (Custom)      | Yes         | Yes        | Optional    | Medium        |  Moderate   | Manual fusion of modalities required |
-| Fine-tuned Siamese Net    | Yes         | Limited    | Yes         | Very High     | Slow        | Needs labeled pairs and more compute |
-| CLIP Fine-tuning          | Yes         | Yes        | Yes         | Very High     | Very Slow   | High performance, high cost |
+| **SBERT + CNN (Custom)**  | Yes         | Yes        | Optional    | Medium        |  Moderate   | Manual fusion of modalities required |
+| **Fine-tuned Siamese**    | Yes         | Limited    | Yes         | Very High     | Slow        | Needs labeled pairs and more compute |
+| **CLIP Fine-tuning**      | Yes         | Yes        | Yes         | Very High     | Very Slow   | High performance, high cost |
 
 ---
 
@@ -259,5 +259,146 @@ To validate the similarity search model against ground truth:
    ```python
    mean_f1 = sum(f1_scores) / len(f1_scores)
    ```
-   
+
+### Training Siamese++ Networks
+
+This approach implements an **enhanced PxK batch Siamese network** with a **CLIP vision encoder backbone** and **SBERT text encoder fusion** for multi-modal product matching. The goal is to predict which product listings represent the same item based on both images and titles.
+
+We started from a **CLIP + FAISS zero-shot baseline**, then moved to a **fine-tuned approach** that significantly improved F1 scores by leveraging a Siamese-style contrastive learning setup with multiple positive and negative pairs per batch (**PxK sampling**).
+
+---
+
+### Why Use Siamese++ (PxK Batch CLIP + SBERT Fusion)  
+
+| Strength                       | Explanation |
+|--------------------------------|-------------|
+| **Multi-Modal Fine-Tuning**    | Simultaneously optimizes image and text encoders (CLIP Vision + SBERT) to align in a shared space, improving cross-modal similarity accuracy. |
+| **PxK Batch Comparison**       | Processes multiple positive and negative pairs per batch, providing richer gradient signals than vanilla Siamese, leading to faster and more stable convergence. |
+| **InfoNCE Loss Optimization**  | Uses CLIP-style InfoNCE loss to maximize similarity for matching pairs while minimizing it for non-matching pairs within the batch. |
+| **Flexible Fusion Strategy**   | Allows adjustable weighting between image and text embeddings (e.g., 0.6 : 0.4) to adapt to dataset characteristics. |
+| **Improved Performance**       | Outperforms frozen CLIP + FAISS and vanilla Siamese by leveraging domain-specific fine-tuning, yielding ~6% F1 improvement in our case. |
+
+---
+
+## Core Ideas
+
+### 1. **CLIP Backbone Fine-Tuning**
+- Use CLIP’s vision encoder for images.
+- Fine-tune only the **image encoder** during PxK Siamese training (title encoder is from SBERT for fusion stage).
+
+### 2. **PxK Batch Siamese Training**
+- Each batch contains **P labels × K samples per label**.
+- Every sample forms **both positive and negative pairs** with others in the batch.
+- Contrastive loss: **CLIP-style InfoNCE**.
+- Compared to vanilla Siamese (1 pos / 1 neg per step), PxK allows **many comparisons at once**, improving training efficiency and stability.
+
+### 3. **SBERT Fusion at Inference**
+- Since SBERT is already a pretrained model from Siamese + BERT, we will just take that into use.
+- At test time, fuse CLIP image embeddings with SBERT text embeddings:
+  ```
+  final_embedding = img_emb * α + text_emb * (1 − α)
+  ```
+- Best performance so far at **α = 0.6** (image weight).
+
+---
+
+## Outcome
+
+**Dataset Split:**  
+- Train: 70%  
+- Val: 15%  
+- Test: 15%
+
+**Image-only model:**  
+- Best epoch: 8  
+- Val F1: **0.7375** @ threshold 0.56  
+- Test F1 (val threshold): **0.6878**  
+- Test F1 (best test threshold 0.54): **0.6960**  
+
+**SBERT fusion (α = 0.6, epoch 8):**  
+- Val F1: **0.7939**  
+- Test F1: **0.7566**  
+
+**Improvement:**  
+- Nearly **+6% absolute F1** vs. frozen CLIP or BERT+CNN baseline.
+
+---
+
+## What Didn’t Work
+
+- **Vanilla Siamese:**  
+  - Using a 1:1 pos/neg pair training loop with CLIP embeddings did not converge as well.
+  - Low diversity in comparisons per step → slower learning.
+  - PxK sampling + CLIP-style InfoNCE yielded far better results.
+
+---
+
+## Directory Structure
+```
+similarItemSearch/
+├── train_clip.py            # PxK batch Siamese training
+├── two_pair_fusion_infer.py # Inference with image+text fusion on two data input and determine if similar or not
+├── datasets/                # Data loading & transforms
+├── checkpoints/             # Saved model weights
+├── train.csv                # Metadata
+├── train_images/            # Image data
+└── README.md                # This file
+```
+
+---
+
+## How to Run
+
+### 1) Train + Validate + Test (image-only)
+
+Runs PxK training, saves best checkpoint by VAL F1, and evaluates on TEST with the VAL-chosen threshold.
+```bash
+python train_clip.py --epochs 8 --batch 64 --P 16 --K 4
+```
+
+### 2) Train + Validate + Test (with SBERT fusion)
+
+Same as above, plus builds SBERT embeddings after training, grid-searches the image weight on VAL, and reports fused F1 on TEST.
+```bash
+python train_clip.py \
+  --epochs 8 --batch 64 --P 16 --K 4 \
+  --fuse --sbert_model all-MiniLM-L6-v2 \
+  --wimg_grid 0.60,0.70,0.80,0.85,0.90,0.95
+```
+
+---
+
+## Evaluation
+
+- F1 scores are computed on **validation split** to select the best epoch & threshold.
+- Test scores are reported with both:
+  - Val-tuned threshold (**fair**)
+  - Test-tuned threshold (**upper bound** for debugging)
+
+---
+
+## Original CLIP + FAISS Baseline
+
+Before Siamese++ fine-tuning, we used a zero-shot CLIP + FAISS pipeline:
+
+### Step 1: Extract Embeddings
+- CLIP ViT-B/32 for image & text embeddings.
+- Normalize and combine (average) image & title embeddings.
+
+### Step 2: Similarity Search
+- FAISS index with cosine similarity.
+- Retrieve top-K matches per item.
+
+### Step 3: Thresholding
+- Dynamic threshold per query: `mean(sim) + std(sim) * multiplier`.
+
+---
+
+## Future Work
+- Larger-scale training with full dataset.
+- More advanced fusion strategies (cross-attention, gating networks).
+- Domain-specific CLIP pretraining.
+- Cross-modal supervision, include fine tuning SBERT in the P x K Siamese++ training process.
+
+
 
