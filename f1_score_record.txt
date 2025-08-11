@@ -1,16 +1,26 @@
 CLIP + Faiss
-Sataic Threshold:
-v1 --> threshold 0.9, 0.5 * image_embed && 0.5 * title_embed: f1 ≈ 0.63
-v2 --> threshold 0.9, 0.3 * image_embed && 0.7 * title_embed: f1 ≈ 0.615
-v3 --> threshold 0.9, 0.7 * image_embed && 0.3 * title_embed: f1 ≈ 0.63
+    Sataic Threshold:
+    v1 --> threshold 0.9, 0.5 * image_embed && 0.5 * title_embed: f1 ≈ 0.63
+    v2 --> threshold 0.9, 0.3 * image_embed && 0.7 * title_embed: f1 ≈ 0.615
+    v3 --> threshold 0.9, 0.7 * image_embed && 0.3 * title_embed: f1 ≈ 0.63
 
-Dynamic Threshold:
-v1 --> threshold scaling multiplier 1.44, 0.5 * image_embed && 0.5 * title_embed: f1 ≈ 0.69
-v2 --> threshold scaling multiplier 1.5, 0.3 * image_embed && 0.7 * title_embed: f1 ≈ 0.646
-v3 --> threshold scaling multiplier 1.45, 0.7 * image_embed && 0.3 * title_embed: f1 ≈ 0.675
+    Dynamic Threshold:
+    v1 --> threshold scaling multiplier 1.44, 0.5 * image_embed && 0.5 * title_embed: f1 ≈ 0.69
+    v2 --> threshold scaling multiplier 1.5, 0.3 * image_embed && 0.7 * title_embed: f1 ≈ 0.646
+    v3 --> threshold scaling multiplier 1.45, 0.7 * image_embed && 0.3 * title_embed: f1 ≈ 0.675
 
 BERT + CNN + Faiss
-v1 --> threshold scaling multiplier 1.4, 0.5 * image_embed && 0.5 * title_embed: f1 ≈ 0.654
-v2 --> threshold scaling multiplier 1.4, 0.3 * image_embed && 0.7 * title_embed: f1 ≈ 0.584
-v3 --> threshold scaling multiplier 1.4, 0.7 * image_embed && 0.3 * title_embed: f1 ≈ 0.656
+    v1 --> threshold scaling multiplier 1.4, 0.5 * image_embed && 0.5 * title_embed: f1 ≈ 0.654
+    v2 --> threshold scaling multiplier 1.4, 0.3 * image_embed && 0.7 * title_embed: f1 ≈ 0.584
+    v3 --> threshold scaling multiplier 1.4, 0.7 * image_embed && 0.3 * title_embed: f1 ≈ 0.656
+
+Encoder Tunning with CLIP Backbone and P×K Batch Siamese Network with CLIP-style InfoNCE Loss Fusion with SBERT
+    Train | Val | Test
+    70%    15%   15%
+    Image only: Epoch number 8 has a vildation f1 score of 0.7375, testing f1 score of 0.6878, threshold of 0.56, 
+        re-sweeping threshold using the best epoch gives f1 score of 0.696, threshold of 0.54
+    Sbert fusion: With the best Epoch, in our case number 8, we fuse the title embedding from SBERT, and 
+        compute validation f1 score of 0.7939, and testing f1 score of 0.7566, best image : text embedding ratio so far is 0.6 : 0.4
+    There is a huge improvement regardless (nearly 6 percent), comparing to frozen CLIP and BERT + CNN 
+
 

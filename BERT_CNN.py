@@ -12,9 +12,9 @@ device = torch.device("cpu")
 
 csv_path = "shopee-product-matching/train.csv"
 image_dir = "shopee-product-matching/train_images"
-output_text_path = "shopee-product-matching/v3_bert_cnn_text.npy"
-output_image_path = "shopee-product-matching/v3_bert_cnn_image.npy"
-output_combined_path = "shopee-product-matching/v3_bert_cnn_embeddings.npy"
+output_text_path = "shopee-product-matching/v1_bert_cnn_text.npy"
+output_image_path = "shopee-product-matching/v1_bert_cnn_image.npy"
+output_combined_path = "shopee-product-matching/v1_bert_cnn_embeddings.npy"
 
 df = pd.read_csv(csv_path)
 
@@ -71,7 +71,7 @@ with torch.no_grad():
     text_out = text_proj(text_tensor.to(device))
     image_out = image_proj(image_tensor.to(device))
 
-    combined = text_out * 0.3 + image_out * 0.7
+    combined = text_out * 0.5 + image_out * 0.5
     combined = combined / combined.norm(dim=1, keepdim=True)
 
 combined_embeddings = combined.cpu().numpy()

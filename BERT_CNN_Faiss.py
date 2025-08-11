@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import faiss
 
-embeddings = np.load("shopee-product-matching/v3_bert_cnn_embeddings.npy")
-output_submission_path = "v3_bert_cnn_submission.csv"
+embeddings = np.load("shopee-product-matching/v1_bert_cnn_embeddings.npy")
+output_submission_path = "v1_bert_cnn_submission.csv"
 with open("shopee-product-matching/bert_cnn_ids.txt") as f:
     posting_ids = [line.strip() for line in f]
 

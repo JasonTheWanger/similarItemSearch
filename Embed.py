@@ -10,10 +10,10 @@ import clip
 device = "mps" if torch.backends.mps.is_available() else "cpu"
 image_dir = "shopee-product-matching/train_images"
 csv_path = "shopee-product-matching/train.csv"
-output_features_path = "shopee-product-matching/v3_full_image_embeddings.npy"
-output_title_path = "shopee-product-matching/v3_full_image_title.npy"
-output_ids_path = "shopee-product-matching/v3_full_image_ids.txt"
-output_final_path = "shopee-product-matching/v3_full_final_embeddings.npy"
+output_features_path = "shopee-product-matching/v1_full_image_embeddings.npy"
+output_title_path = "shopee-product-matching/v1_full_image_title.npy"
+output_ids_path = "shopee-product-matching/v1_full_image_ids.txt"
+output_final_path = "shopee-product-matching/v1_full_final_embeddings.npy"
 batch_size = 256  # Safe for MPS memory
 
 # ====== LOAD MODEL ======
@@ -84,7 +84,7 @@ with open(output_ids_path, "w") as f:
 print(f"✅ Saved {len(image_embeddings_np)} image embeddings to {output_features_path}")
 
 # ====== FINAL MULTIMODAL EMBEDDING ======
-final_embeddings = 0.3 * title_embeddings_np + 0.7 * image_embeddings_np
+final_embeddings = 0.5 * title_embeddings_np + 0.5 * image_embeddings_np
 final_embeddings /= np.linalg.norm(final_embeddings, axis=1, keepdims=True)
 np.save(output_final_path, final_embeddings)
 

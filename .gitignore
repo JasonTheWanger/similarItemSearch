@@ -4,3 +4,5 @@
 *.ckpt
 *.h5
 *.onnx
+*.txt
+*.pth
